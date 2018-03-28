@@ -1,0 +1,97 @@
+#!/bin/bash
+# Description:
+#  Small script to compare two netcdf files, including metadata
+#  The script uses ncdump to extract the content of the file and
+#  then diff to perform the comparison
+#
+# Author: Salvatore Pinto
+#
+# License:
+#  This program is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+_VERSION=1.0
+
+function usage {
+cat <<:usage
+diffnc version $_VERSION
+Usage:
+diffnc [options] <file1> <file2>
+
+Options:
+      -h               Displays this help page
+      -x <metadata>    Exclude <metadata> from the comparison (comma-separated for multiple
+                       metadata names)
+      -q               Do not print differences
+      -e | --ed        Output an ed script.
+      -n | --rcs       Output an RCS format diff.
+      -l | --paginate  Pass the output through 'pr' to paginate it.
+      -s               Report when two files are the same.
+      
+Exit codes:
+      0                files matches
+      1                files do not match
+
+:usage
+  exit 0
+}
+
+function error {
+  echo "[ERROR  ][diffnc] $2" 1>&2
+  exit $1
+}
+
+[[ -z "$1" ]] && usage
+
+#Default parameters
+_DIFFPARAMS=""
+_EXCLUDE_META=""
+_INPUTF1=
+_INPUTF2=
+
+#Parse arguments
+while [[ "$#" -gt 0 ]]; do
+  case "$1" in
+   -h | --help) usage ;;
+   -q | --brief | -e | --ed | -n | --rcs | -l | --paginate | -s) _DIFFPARAMS="$_DIFFPARAMS $1"; shift 1;;
+   -x) _EXCLUDE_META="$2,$_EXCLUDE_META"; shift 2;;
+   *) if [[ -z "$_INPUTF1" ]]; then
+        _INPUTF1=$1
+      elif [[ -z "$_INPUTF2" ]]; then
+        _INPUTF2=$1
+      else
+        error 255 "Unnknown option: $1"
+      fi
+      shift 1
+    ;;
+  esac
+done
+
+#Check mandatory arguments and commands required
+[[ -z $_INPUTF1 || -z $_INPUTF2 ]] && error 255 "You need to specify two files as input"
+[[ -e $_INPUTF1 ]] || error 255 "File do not exist: $_INPUTF1"
+[[ -e $_INPUTF2 ]] || error 255 "File do not exist: $_INPUTF2"
+which ncdump &>/dev/null || error 254 "Cannot find program: ncdump"
+which diff &>/dev/null || error 254 "Cannot find program: diff"
+which awk &>/dev/null || error 254 "Cannot find program: awk"
+
+#Dump the files and run the diff
+if [[ -z "$_EXCLUDE_META" ]]; then
+  diff $_DIFFPARAMS <(ncdump $_INPUTF1) <(ncdump $_INPUTF2)
+else
+  diff $_DIFFPARAMS <(ncdump $_INPUTF1 | awk -v x="$_EXCLUDE_META" 'BEGIN{split(x,k,",")}{m=0;for(a in k){if(k[a]=="")continue;if($0 ~ ":"k[a]" = "){m=1;break}};if(m==0)print$0}') <(ncdump $_INPUTF2 | awk -v x="$_EXCLUDE_META" 'BEGIN{split(x,k,",")}{m=0;for(a in k){if(k[a]=="")continue;if($0 ~ ":"k[a]" = "){m=1;break}};if(m==0)print$0}')
+  res=$?
+fi
+exit $res
+
