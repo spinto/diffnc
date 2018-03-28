@@ -12,7 +12,7 @@ yum install -y diff gawk netcdf diffutils
 
 Just download the [diffnc](https://github.com/spinto/diffnc/raw/master/diffnc) script, and run it.
 ```shell
-curl https://github.com/spinto/diffnc/raw/master/diffnc -o diffnc
+curl -L https://github.com/spinto/diffnc/raw/master/diffnc -o diffnc
 chmod +x diffnc
 ./diffnc
 ```
