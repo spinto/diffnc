@@ -89,6 +89,7 @@ which awk &>/dev/null || error 254 "Cannot find program: awk"
 #Dump the files and run the diff
 if [[ -z "$_EXCLUDE_META" ]]; then
   diff $_DIFFPARAMS <(ncdump $_INPUTF1) <(ncdump $_INPUTF2)
+  res=$?
 else
   diff $_DIFFPARAMS <(ncdump $_INPUTF1 | awk -v x="$_EXCLUDE_META" 'BEGIN{split(x,k,",")}{m=0;for(a in k){if(k[a]=="")continue;if($0 ~ ":"k[a]" = "){m=1;break}};if(m==0)print$0}') <(ncdump $_INPUTF2 | awk -v x="$_EXCLUDE_META" 'BEGIN{split(x,k,",")}{m=0;for(a in k){if(k[a]=="")continue;if($0 ~ ":"k[a]" = "){m=1;break}};if(m==0)print$0}')
   res=$?
